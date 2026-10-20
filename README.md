@@ -48,6 +48,64 @@ Review bunq's [API terms](https://static.bunq.com/website/documents/bunq-terms-c
 and [authentication guide](https://doc.bunq.com/tutorials/your-first-payment/creating-the-api-context)
 when setting up your integration.
 
+## Plugin and finance skills
+
+This repository is also a local desktop plugin. Its portable `plugin.json` and
+`mcp.json` package the same four MCP tools with three reusable workflows:
+
+- **bunq-banking** discovers schemas, reads complete collections, and verifies
+  explicitly requested nonfinancial changes.
+- **subscription-audit** reconciles all in-scope accounts and billing mailboxes,
+  separating confirmed contracts, inferred recurrence, usage and historical items.
+- **finance-reconciliation** reconciles spending, income, transfers, fees, refunds,
+  currencies and balances with explicit evidence and coverage limits.
+
+The `.codex-plugin/plugin.json` and `.mcp.json` files support older local hosts.
+The portable root manifest remains canonical. These skills are reusable across
+users; they contain no account identifiers, credentials or personal audit data.
+The icon is an independent ledger graphic, not bunq branding.
+
+The plugin needs a local executor: Python 3.11+ accessible as `python3`, the
+packages in `requirements.txt` installed in that interpreter, and authenticated
+`op` available on the plugin process's `PATH`. For example, activate the virtual
+environment above before starting the host so its `python3` is selected.
+Dependencies and vault credentials are not bundled in the plugin archive.
+The vault CLI must support item reads and updates while preserving concealed
+fields; retain the same item and `api_context` used by an existing connection.
+
+Set `BUNQ_OP_ITEM_ID` and `BUNQ_OP_VAULT_ID` in the host's inherited environment.
+Alternatively, create `~/.config/bunq-banking-mcp/settings.json` containing only
+nonsecret references, replacing these placeholders:
+
+```json
+{
+  "BUNQ_OP_ITEM_ID": "YOUR_ITEM_ID",
+  "BUNQ_OP_VAULT_ID": "YOUR_VAULT_ID"
+}
+```
+
+`plugin_launcher.py` loads this optional settings file before starting the same
+server; inherited environment values take precedence. API keys, signing keys
+and session tokens stay in the vault item, never in this file. An existing raw
+MCP registration's per-server environment is not automatically inherited by a
+separately installed plugin.
+
+Use your client's local plugin marketplace or supported private-plugin import
+flow to install this package. Register the repository root as the plugin source
+and retain the included runtime files, schema and license notices. Discover the
+four tools and call `connection_status` in the installed host to verify it.
+Choose either the plugin connection or the standalone MCP registration for
+active use, so tools are not duplicated. Removing a duplicate client registration
+does not require deleting the vault item or enrolling another bunq device.
+
+Email and other bank sources use whichever authenticated connectors are
+available in the host; this package does not provide an email connector or
+bundle a Finances app connection. Verify any optional aggregator's supported
+countries, accounts, exposed tools and available history before using it.
+Saving a private plugin or installing its skills does not deploy this local
+process to web or mobile, establish bank authentication, or prove a complete
+financial audit.
+
 ## Tools
 
 1. `get_tool_catalog`: search and page through exact operation names,

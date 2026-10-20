@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "bunq-banking": {
+      "command": "python3",
+      "args": [
+        "${PLUGIN_ROOT}/plugin_launcher.py"
+      ],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}

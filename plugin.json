@@ -1,0 +1,43 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "bunq-banking-mcp",
+  "version": "0.2.0",
+  "description": "bunq banking MCP and evidence-based subscription and finance workflows.",
+  "author": {
+    "name": "Sami Halawa",
+    "url": "https://github.com/samihalawa"
+  },
+  "repository": "https://github.com/samihalawa/bunq-banking-mcp",
+  "license": "MIT",
+  "keywords": [
+    "bunq",
+    "banking",
+    "subscriptions",
+    "reconciliation",
+    "finance"
+  ],
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "bunq Banking & Finance",
+        "shortDescription": "Accounts, bills and cash flow",
+        "longDescription": "Read bunq accounts and reconcile bank transactions, billing emails, subscriptions, fees and refunds with explicit source coverage. Includes controlled nonfinancial operations. Requires a local Python runtime and a 1Password-backed bunq API context.",
+        "developerName": "Sami Halawa",
+        "category": "Productivity",
+        "capabilities": [
+          "Interactive",
+          "Write"
+        ],
+        "defaultPrompt": [
+          "Audit my subscriptions using bank records and billing emails.",
+          "Reconcile my spending, income, transfers and refunds.",
+          "Show my bunq accounts and balances."
+        ],
+        "logo": "./assets/icon.svg",
+        "composerIcon": "./assets/icon.svg",
+        "brandColor": "#14665B"
+      }
+    }
+  }
+}

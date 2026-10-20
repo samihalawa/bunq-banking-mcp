@@ -1,0 +1,31 @@
+---
+name: subscription-audit
+description: Use when finding all paid subscriptions, renewals, memberships, recurring bills or usage commitments by reconciling bunq transactions with billing emails and provider records.
+---
+
+# Subscription audit
+
+Build an evidence-based register for the user's stated population and window. Previous AI reports, familiar vendor lists and repeated merchant names are leads, not completeness proof. Keep the audit read-only; this skill does not authorize cancellation, payment changes or money movement.
+
+First inventory **all available authorized sources**, including every institution/account, mailbox/alias, native provider billing account, existing statement/export, invoice repository and optional aggregator. Maintain a coverage matrix in runtime memory: source identity, actual connectivity, requested and exposed window, pagination state, inspected bodies/attachments or other nested payloads, and missing slice. Check every relevant source in the requested population, using supported recovery for available access; never assume bunq, Finances, one mailbox or known vendors are complete. Explicitly report any source that cannot be inspected.
+
+## Gather the full source population
+
+1. Identify available bank, email, provider and statement connectors and their authenticated accounts. Enumerate all relevant bank accounts, including dormant or closed accounts with in-window history. Bind all stated mailboxes and account aliases; an alias is not proof of a separate mailbox. Use the bundled bunq-banking skill for exact schemas, every page and nested statuses. Read payments, card actions, bank membership invoices, recurring mandates and scheduled resources where available. Empty mandates do not establish that no subscriptions exist.
+2. Search the entire stated email window across every available in-scope mailbox. Combine broad billing, receipt, invoice, renewal, subscription, membership, payment-failure, trial, cancellation, refund and credit-note searches with merchant-specific follow-ups. Include localized wording and App Store/Google Play receipts. Discover unfamiliar vendors; do not limit the search to known services or recent messages. Exhaust result pages and deduplicate stable message IDs.
+3. Read complete matching threads and every action-changing message body. Inspect relevant attachments and invoice line items through supported email/Drive tools. Follow later cancellations, migrations, refunds, failed retries and successful settlements through the audit date, even when an earlier receipt seemed decisive. Extend precise earlier history when needed to identify an annual plan or establish cadence. Track the actual message/body/attachment coverage; search hits alone are not inspected evidence.
+4. Inspect every available in-scope provider billing source through supported account APIs or native pages, even when bank/email evidence already appears decisive. Read plan status, billing cycle, next renewal, auto-renew setting, invoices and payment method. Check available in-scope statements/exports and use them to fill a proven API history gap, validating account, date range and opening/closing totals. Discover configured sources yourself rather than requiring the user to enumerate them. An optional Finances connector can broaden bank coverage only after its live tools, account support and actual available history are verified. Installed status alone proves none of those.
+
+## Reconcile, classify and calculate
+
+- Link each settled purchase across payment/card records, email receipts and provider invoices using native references, dates, currency and amounts. Preserve ambiguity when links are uncertain. App Store or Stripe descriptors can aggregate different products or accounts; identify line items before assigning a plan. Hardware, one-time purchases and credit top-ups are not subscriptions merely because they share that merchant.
+- Separate **confirmed active recurring contracts**, **inferred recurring charges**, **manual renewals or expiring terms**, **unresolved or past-due services**, **variable usage or credit top-ups**, **domain renewals**, and **cancelled, expired or refunded historical items**. A trial or failed payment is not a settled charge. A migration may replace an old plan. A partial refund does not prove cancellation; a pending dispute does not prove a completed refund.
+- Infer recurrence from settled cadence and merchant/product continuity, never from one payment alone. Label the inference and its supporting dates. A bank's recurring whitelist is permission to collect, not proof of a current paid contract. Latest explicit provider/email state governs current terms; bank settlement governs money actually paid.
+- Record service and plan/account, status, native price/currency, cycle, monthly equivalent, latest settled date, next renewal with evidence or an explicit estimate, auto-renew state, payment method, manage/cancel link and source references. Read a manage link from a verified provider source; do not invent deep links. Keep historical spend distinct from future commitment.
+- Compute monthly equivalents from exact amounts: annual / 12, quarterly / 3, weekly × 52 / 12. Do not normalize variable usage as a fixed commitment. Prefer the bank's settled local amount for historical spend. For future currency conversion, state the rate source/date and uncertainty. Sum exact values before display rounding, retain currency subtotals and include only the explicitly defined class in each total.
+
+## Deliver and state coverage
+
+Sort the requested register by comparable cost and include upcoming renewals, uncertain candidates and excluded historical items as useful. Create or update a sheet only when requested, using an existing canonical destination where available. Cite stable bank/invoice/email/provider IDs or usable private source links without exposing credentials or full bank identifiers unnecessarily.
+
+State accounts and mailboxes actually covered, requested versus exposed date ranges, exhausted pagination, inspected message/body/attachment counts, and inaccessible provider or historical slices. Retain successful data and resume only missing slices after failures. Never call a sampled or truncated audit complete, carry an old AI total forward, or present missing receipts as proof that no service exists.

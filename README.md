@@ -117,7 +117,7 @@ financial audit.
 4. `connection_status`: verify a live account read without returning secrets.
 
 5. `read_account_history`: exhaust Payment pages for one account and an inclusive-start, exclusive-end date window. Returns all selected records, undated exceptions, cursor coverage and explicit incomplete diagnostics; the page limit defaults to 100. It scans all exposed pages without assuming creation dates are sorted. Dates use the provider's `created` calendar date, without timezone conversion.
-6. `review_financial_records`: review supplied Payment records with exact decimals, conservative reciprocal transfer pairing, separate currency totals, native card statuses and invoice line items. It fetches nothing and establishes no source completeness, business purpose, active contract or tax deduction. Cash totals include internal account legs and are labelled accordingly; they are not consolidated expenses.
+6. `review_financial_records`: review supplied Payment records with exact decimals, conservative reciprocal transfer pairing, separate currency totals, native card statuses and invoice line items. It fetches nothing and establishes no source completeness, business purpose, active contract or tax deduction. Cash totals include internal account legs and are labelled accordingly; they are not consolidated expenses. Blank descriptions can match only with reciprocal known accounts, exact opposite same-currency amounts, unique candidates in both directions and a two-second window. Explicit native FX markers also validate source amount and source/destination currencies. Matching basis and confidence are returned; evidence matching is not a provider-native transaction link.
 
 Example `execute_tool` account read:
 

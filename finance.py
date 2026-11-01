@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
+import re
 from urllib.parse import parse_qs, urlparse
 
 
@@ -137,11 +138,41 @@ def _instant(value):
         return None
 
 
+def _fx_role(row):
+    """Recognize only the full native BUNQ conversion marker and currency role."""
+    description = row["description"]
+    marker = re.fullmatch(r"Currency Conversion ([A-Z]{3})-([A-Z]{3}) \(([0-9]+(?:\.[0-9]+)?)\)",
+                          description) if isinstance(description, str) else None
+    if row["type"] != "BUNQ" or not marker:
+        return None
+    source, destination, amount = marker.groups()
+    expected, value = Decimal(amount), Decimal(row["amount"])
+    if source == destination or expected <= 0:
+        return None
+    if row["currency"] == source and value == -expected:
+        return "source"
+    if row["currency"] == destination and value > 0:
+        return "destination"
+    return None
+
+
 def review_payments(payments: list[dict], own_accounts: list[dict]) -> dict:
     """Keep every unique account/payment row and pair only reciprocal transfers.
 
     Pass records from the Payment collection, not card authorizations. Business
     purpose and contract status remain unknown until supported by other evidence.
+
+    Pairing is an evidence-based record match, not a provider-supplied transfer
+    link. Both legs must uniquely identify reciprocal owned accounts, have the
+    same currency and exact opposite nonzero amounts, and have equal descriptions.
+    Equal nonempty descriptions allow a 120-second timestamp difference; two
+    empty descriptions allow only 2 seconds. Explicit FX pairs additionally
+    require BUNQ type, the same full native "Currency Conversion SRC-DST (amount)"
+    marker, the source debit matching that amount/currency and a positive credit
+    in the destination currency within 2 seconds. Both directions must remain
+    unique. Other FX and ambiguous candidates stay unresolved. Both currency cash
+    legs remain; no exchange rate or FX profit/loss is invented. Each row states
+    the matching basis and confidence.
     """
     ids = {a["id"] for a in own_accounts}
     iban_accounts = defaultdict(set)
@@ -174,7 +205,7 @@ def review_payments(payments: list[dict], own_accounts: list[dict]) -> dict:
         rows.append({"account_id": account, "payment_id": identity,
                      "created": payment.get("created"), "amount": str(value), "currency": currency,
                      "merchant": cp.get("display_name") or cp.get("name") or "",
-                     "description": payment.get("description", ""), "type": payment.get("type"),
+                     "description": payment.get("description") or "", "type": payment.get("type"),
                      "value_date": payment.get("value_date"),
                      "original_amount": payment.get("original_amount"),
                      "balance_after_mutation": payment.get("balance_after_mutation"),
@@ -186,13 +217,17 @@ def review_payments(payments: list[dict], own_accounts: list[dict]) -> dict:
                      "purpose": "unknown", "purpose_confidence": "unverified",
                      "recurring_status": "unverified", "counterparty_account_id": cp_id,
                      "transfer_pair": None,
+                     "transfer_matching_basis": "unresolved_owned_counterparty" if cp_id in ids else "not_applicable",
+                     "transfer_matching_confidence": "unverified" if cp_id in ids else "not_applicable",
                      "review": "Confirm purpose and receipt; merchant alone does not establish a contract or tax deduction."})
-    candidates = defaultdict(list)
+    candidates, fx_candidates = defaultdict(list), defaultdict(list)
     for i, row in enumerate(rows):
         if (row["counterparty_account_id"] in ids and row["counterparty_account_id"] != row["account_id"]
                 and row["included_in_cash_totals"]):
             candidates[(row["account_id"], row["counterparty_account_id"], row["currency"],
                         Decimal(row["amount"]))].append(i)
+            if _fx_role(row):
+                fx_candidates[(row["account_id"], row["counterparty_account_id"], row["description"])].append(i)
     links = {}
     for i, row in enumerate(rows):
         amount = Decimal(row["amount"])
@@ -200,20 +235,39 @@ def review_payments(payments: list[dict], own_accounts: list[dict]) -> dict:
             continue
         when = _instant(row["created"])
         alternatives = []
-        for j in candidates.get((row["counterparty_account_id"], row["account_id"], row["currency"], -amount), []):
+        # Conversion markers use the stricter FX rule, never the generic named-description rule.
+        conversion_marker = isinstance(row["description"], str) and row["description"].startswith("Currency Conversion ")
+        normal_candidates = [] if conversion_marker else candidates.get(
+            (row["counterparty_account_id"], row["account_id"], row["currency"], -amount), [])
+        for j in normal_candidates:
             other = rows[j]
             at = _instant(other["created"])
-            if (i != j and when and at and abs((when - at).total_seconds()) <= 120
-                    and row["description"] and row["description"] == other["description"]):
+            seconds = 120 if row["description"] else 2
+            if (i != j and when and at and abs((when - at).total_seconds()) <= seconds
+                    and row["description"] == other["description"]):
                 alternatives.append(j)
         if len(alternatives) == 1:
             links[i] = alternatives[0]
+        role = _fx_role(row)
+        if role:
+            alternatives = []
+            for j in fx_candidates.get((row["counterparty_account_id"], row["account_id"], row["description"]), []):
+                other, at = rows[j], _instant(rows[j]["created"])
+                if (i != j and _fx_role(other) != role and when and at
+                        and abs((when - at).total_seconds()) <= 2):
+                    alternatives.append(j)
+            if len(alternatives) == 1:
+                links[i] = alternatives[0]
     for i, j in links.items():
         if links.get(j) == i:
             row, other = rows[i], rows[j]
             row["classification"] = "paired_internal_transfer"
             row["transfer_pair"] = {"account_id": other["account_id"], "payment_id": other["payment_id"]}
-            row["review"] = "Exclude both matched legs from consolidated income and expense; retain account cash movements."
+            row["transfer_matching_basis"] = ("explicit_currency_conversion_2s" if _fx_role(row) else
+                "reciprocal_owned_accounts_exact_opposite_amount_same_currency_unique_both_directions_"
+                + ("equal_named_description_120s" if row["description"] else "empty_descriptions_2s"))
+            row["transfer_matching_confidence"] = "high_record_match_not_provider_link"
+            row["review"] = "Reciprocal owned-account records matched on the stated basis. Exclude both legs from consolidated income and expense; retain account cash movements."
     for row in rows:
         if row["classification"] == "owned_transfer_unmatched":
             row["review"] = "Owned-account counterparty found; matching leg is unresolved. Do not treat as consumption."

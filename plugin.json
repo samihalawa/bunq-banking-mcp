@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "bunq-banking-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "bunq banking MCP and evidence-based subscription and finance workflows.",
   "author": {
     "name": "Sami Halawa",
@@ -51,7 +51,7 @@
         ]
       },
       "publication": {
-        "release_notes": "Added every-charge review, conservative exact-decimal ledger helpers, complete paginated account history, and evidence rules for fees, refunds, usage, hardware and personal/business uncertainty."
+        "release_notes": "Improved uniquely reciprocal empty-description and explicit FX transfer matching, with matching basis/confidence and regression tests. Added deeper audit guidance for missing history, investment movements, provider retry receipts and acquisition-cost ROI."
       }
     }
   }

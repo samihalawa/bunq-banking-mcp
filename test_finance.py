@@ -91,6 +91,106 @@ class ReviewTests(unittest.TestCase):
         result = review_payments([a, payment(2, account=2, cp=1, currency="GBP", value="0.10")], accounts)
         self.assertTrue(all(r["classification"] == "owned_transfer_unmatched" for r in result["rows"]))
 
+    def test_empty_descriptions_pair_only_within_two_seconds(self):
+        accounts = [{"id": 1}, {"id": 2}]
+        outgoing = payment(1, cp=2, value="-8", description="", created="2026-10-02 10:00:00.010000")
+        incoming = payment(2, account=2, cp=1, value="8", description="", created="2026-10-02 10:00:00.090000")
+        paired = review_payments([outgoing, incoming], accounts)
+        self.assertTrue(all(r["classification"] == "paired_internal_transfer" for r in paired["rows"]))
+        self.assertTrue(all(r["transfer_matching_basis"].endswith("empty_descriptions_2s") for r in paired["rows"]))
+        self.assertTrue(all(r["transfer_matching_confidence"] == "high_record_match_not_provider_link" for r in paired["rows"]))
+        incoming["created"] = "2026-10-02 10:00:02.010000"
+        boundary = review_payments([outgoing, incoming], accounts)
+        self.assertTrue(all(r["transfer_pair"] is not None for r in boundary["rows"]))
+        incoming["created"] = "2026-10-02 10:00:02.010001"
+        late = review_payments([outgoing, incoming], accounts)
+        self.assertTrue(all(r["transfer_pair"] is None for r in late["rows"]))
+        self.assertTrue(all(r["transfer_matching_basis"] == "unresolved_owned_counterparty" for r in late["rows"]))
+
+    def test_empty_description_repeated_amount_is_ambiguous_in_both_directions(self):
+        outgoing = payment(1, cp=2, value="-8", description="")
+        incoming = payment(2, account=2, cp=1, value="8", description="")
+        extra_incoming = copy.deepcopy(incoming)
+        extra_incoming["id"] = 3
+        result = review_payments([outgoing, incoming, extra_incoming], [{"id": 1}, {"id": 2}])
+        self.assertTrue(all(r["transfer_pair"] is None for r in result["rows"]))
+
+    def test_named_description_keeps_120_second_window_without_fallback(self):
+        accounts = [{"id": 1}, {"id": 2}]
+        outgoing = payment(1, cp=2, value="-8", description="named transfer")
+        incoming = payment(2, account=2, cp=1, value="8", description="named transfer", created="2026-10-02 10:02:00")
+        paired = review_payments([outgoing, incoming], accounts)
+        self.assertTrue(all(r["transfer_matching_basis"].endswith("equal_named_description_120s") for r in paired["rows"]))
+        incoming["created"] = "2026-10-02 10:02:00.000001"
+        self.assertTrue(all(r["transfer_pair"] is None for r in review_payments([outgoing, incoming], accounts)["rows"]))
+        incoming["created"] = outgoing["created"]
+        for other_description in ("different transfer", ""):
+            incoming["description"] = other_description
+            self.assertTrue(all(r["transfer_pair"] is None for r in review_payments([outgoing, incoming], accounts)["rows"]))
+
+    def test_empty_descriptions_cannot_pair_fx_or_unknown_accounts(self):
+        outgoing = payment(1, cp=2, value="-8", description="")
+        incoming = payment(2, account=2, cp=1, value="8", description="", currency="GBP")
+        for accounts in ([{"id": 1}, {"id": 2}], [{"id": 1}]):
+            result = review_payments([outgoing, incoming], accounts)
+            self.assertTrue(all(r["transfer_pair"] is None for r in result["rows"]))
+
+    def test_explicit_native_currency_conversion_pairs_and_preserves_cash_legs(self):
+        marker = "Currency Conversion EUR-GBP (12.50)"
+        outgoing = payment(1, cp=2, value="-12.50", description=marker)
+        incoming = payment(2, account=2, cp=1, value="10.27", currency="GBP", description=marker,
+                           created="2026-10-02 10:00:00.500000")
+        outgoing["type"] = incoming["type"] = "BUNQ"
+        result = review_payments([outgoing, incoming], [{"id": 1}, {"id": 2}])
+        self.assertTrue(all(r["classification"] == "paired_internal_transfer" for r in result["rows"]))
+        self.assertTrue(all(r["transfer_matching_basis"] == "explicit_currency_conversion_2s" for r in result["rows"]))
+        self.assertEqual(result["currency_cash_totals"]["EUR"]["outflows"], "12.50")
+        self.assertEqual(result["currency_cash_totals"]["GBP"]["inflows"], "10.27")
+        self.assertTrue(all("exchange_rate" not in r and "fx_profit_loss" not in r for r in result["rows"]))
+
+    def test_conversion_requires_exact_marker_types_currencies_and_source_amount(self):
+        marker = "Currency Conversion EUR-GBP (12.50)"
+        outgoing = payment(1, cp=2, value="-12.50", description=marker)
+        incoming = payment(2, account=2, cp=1, value="10.27", currency="GBP", description=marker)
+        outgoing["type"] = incoming["type"] = "BUNQ"
+        cases = []
+        for target, key, value in ((0, "amount", {"value": "-12.51", "currency": "EUR"}),
+                                   (1, "amount", {"value": "10.27", "currency": "USD"}),
+                                   (1, "amount", {"value": "12.50", "currency": "EUR"}),
+                                   (1, "amount", {"value": "-10.27", "currency": "GBP"}),
+                                   (0, "type", "CARD"), (1, "type", None),
+                                   (1, "created", "2026-10-02 10:00:02.000001")):
+            pair = copy.deepcopy([outgoing, incoming])
+            pair[target][key] = value
+            cases.append(pair)
+        for bad_marker in ("", "Currency Conversion", "Currency Conversion EUR-GBP (12.50) trailing",
+                           "Currency Conversion EUR-GBP (-12.50)", "Currency Conversion EUR-EUR (12.50)"):
+            pair = copy.deepcopy([outgoing, incoming])
+            pair[0]["description"] = pair[1]["description"] = bad_marker
+            cases.append(pair)
+        pair = copy.deepcopy([outgoing, incoming])
+        pair[1]["description"] = "Currency Conversion EUR-GBP (12.500)"
+        cases.append(pair)
+        for pair in cases:
+            with self.subTest(pair=pair):
+                result = review_payments(pair, [{"id": 1}, {"id": 2}])
+                self.assertTrue(all(r["transfer_pair"] is None for r in result["rows"]))
+
+    def test_conversion_requires_unique_reciprocal_owned_accounts(self):
+        marker = "Currency Conversion EUR-GBP (12.50)"
+        outgoing = payment(1, cp=2, value="-12.50", description=marker)
+        incoming = payment(2, account=2, cp=1, value="10.27", currency="GBP", description=marker)
+        outgoing["type"] = incoming["type"] = "BUNQ"
+        duplicate = copy.deepcopy(incoming)
+        duplicate["id"] = 3
+        ambiguous = review_payments([outgoing, incoming, duplicate], [{"id": 1}, {"id": 2}])
+        self.assertTrue(all(r["transfer_pair"] is None for r in ambiguous["rows"]))
+        unknown_owner = review_payments([outgoing, incoming], [{"id": 1}])
+        self.assertTrue(all(r["transfer_pair"] is None for r in unknown_owner["rows"]))
+        incoming["counterparty_alias"]["monetary_account_id"] = 9
+        unreciprocated = review_payments([outgoing, incoming], [{"id": 1}, {"id": 2}])
+        self.assertTrue(all(r["transfer_pair"] is None for r in unreciprocated["rows"]))
+
     def test_account_identity_dedup_and_credits_not_automatically_refunds(self):
         a = payment(1, value="1.00")
         result = review_payments([a, copy.deepcopy(a), payment(1, account=2)], [{"id": 1}, {"id": 2}])

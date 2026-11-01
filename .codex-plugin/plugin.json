@@ -1,6 +1,6 @@
 {
   "name": "bunq-banking-mcp",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "bunq banking MCP and evidence-based subscription and finance workflows.",
   "author": {
     "name": "Sami Halawa",

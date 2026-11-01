@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, DecimalException, Inexact, InvalidOperation, localcontext
 import re
 from urllib.parse import parse_qs, urlparse
 
@@ -27,7 +27,8 @@ def collect_pages(fetch, path: str, start_date: str, end_date: str,
     they must never be presented as complete history.
     """
     start, end = date.fromisoformat(start_date), date.fromisoformat(end_date)
-    if end <= start or isinstance(page_limit, bool) or not 1 <= page_limit <= 10000:
+    if (end <= start or isinstance(page_limit, bool) or not isinstance(page_limit, int)
+            or not 1 <= page_limit <= 10000):
         raise ValueError("Require end_date > start_date and page_limit in 1..10000")
     if not path.startswith("/") or "?" in path or "#" in path or ".." in path:
         raise ValueError("Invalid collection path")
@@ -82,7 +83,7 @@ def collect_pages(fetch, path: str, start_date: str, end_date: str,
         if malformed:
             break
         older = payload["Pagination"].get("older_url")
-        if not older:
+        if older is None or older == "":
             coverage["complete"] = not coverage["errors"]
             query = None
             break
@@ -174,6 +175,31 @@ def review_payments(payments: list[dict], own_accounts: list[dict]) -> dict:
     legs remain; no exchange rate or FX profit/loss is invented. Each row states
     the matching basis and confidence.
     """
+    if (not isinstance(payments, list) or not all(isinstance(p, dict) for p in payments)
+            or not isinstance(own_accounts, list)
+            or not all(isinstance(a, dict) for a in own_accounts)):
+        raise ValueError("Payments and own_accounts must be lists of records")
+    for account in own_accounts:
+        aliases = account.get("alias", [])
+        if not isinstance(aliases, list) or not all(isinstance(a, dict) for a in aliases):
+            raise ValueError("Account aliases must be a list of records")
+    amounts = [_money(payment.get("amount"))[0] for payment in payments]
+    # Decimal construction preserves digits, but addition and unary negation use
+    # the ambient precision. Cover the full input range plus a possible sum carry;
+    # never silently round a cash total or a reciprocal-transfer lookup key.
+    least_place = min((value.as_tuple().exponent for value in amounts), default=0)
+    most_place = max((value.adjusted() for value in amounts), default=0)
+    with localcontext() as context:
+        context.prec = max(context.prec, most_place - min(0, least_place)
+                           + len(str(max(1, len(amounts)))) + 2)
+        context.traps[Inexact] = True
+        try:
+            return _review_payments(payments, own_accounts)
+        except DecimalException:
+            raise ValueError("Amounts exceed the supported exact-decimal range") from None
+
+
+def _review_payments(payments: list[dict], own_accounts: list[dict]) -> dict:
     ids = {a["id"] for a in own_accounts}
     iban_accounts = defaultdict(set)
     for account in own_accounts:

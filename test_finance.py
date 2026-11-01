@@ -1,5 +1,6 @@
 import copy
 import unittest
+from decimal import getcontext, localcontext
 
 from finance import card_state, collect_pages, flatten_fee_items, review_payments
 
@@ -65,7 +66,48 @@ class CollectionTests(unittest.TestCase):
             collect_pages(lambda _: page([]), "/user/7/payment", "2026-11-01", "2026-10-01")
 
 
+    def test_noninteger_page_limit_is_rejected_before_fetch(self):
+        for limit in (True, 1.5, "2", None):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                collect_pages(lambda _: self.fail("Invalid limit must not fetch"),
+                              "/user/7/payment", "2026-10-01", "2026-11-01", limit)
+
+    def test_false_numeric_cursor_does_not_prove_terminal_page(self):
+        for cursor in (False, 0, [], {}):
+            result = collect_pages(lambda _: page([payment(1)], cursor),
+                                   "/user/7/payment", "2026-10-01", "2026-11-01")
+            self.assertFalse(result["coverage"]["complete"])
+            self.assertIn("invalid_pagination_url", result["coverage"]["errors"])
+
 class ReviewTests(unittest.TestCase):
+    def test_totals_keep_cents_beyond_ambient_decimal_precision(self):
+        rows = [payment(1, value="9999999999999999999999999999.99"),
+                payment(2, value="0.02"), payment(3, value="-0.12345678901234567890123456789")]
+        with localcontext() as context:
+            context.prec = 6
+            result = review_payments(rows, [{"id": 1}])
+            self.assertEqual(getcontext().prec, 6)
+        totals = result["currency_cash_totals"]["EUR"]
+        self.assertEqual(totals["inflows"], "10000000000000000000000000000.01")
+        self.assertEqual(totals["outflows"], "0.12345678901234567890123456789")
+
+    def test_large_reciprocal_transfer_keeps_exact_opposite_key(self):
+        amount = "9999999999999999999999999999.99"
+        result = review_payments([payment(1, cp=2, value="-" + amount),
+                                  payment(2, account=2, cp=1, value=amount)],
+                                 [{"id": 1}, {"id": 2}])
+        self.assertTrue(all(r["classification"] == "paired_internal_transfer" for r in result["rows"]))
+
+    def test_malformed_record_containers_have_argument_errors(self):
+        for payments, accounts in [([None], [{"id": 1}]), ([], [None]),
+                                   ([], [{"id": 1, "alias": [None]}])]:
+            with self.subTest(payments=payments, accounts=accounts), self.assertRaises(ValueError):
+                review_payments(payments, accounts)
+
+    def test_decimal_overflow_is_an_explicit_argument_error(self):
+        with self.assertRaisesRegex(ValueError, "exact-decimal range"):
+            review_payments([payment(1, value="1E+1000000")], [{"id": 1}])
+
     def test_exact_decimal_and_currencies_never_mix(self):
         rows = [payment(1), payment(2, value="-0.20"), payment(3, currency="USD", value="-7.00")]
         result = review_payments(rows, [{"id": 1}])

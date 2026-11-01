@@ -1,10 +1,11 @@
 {
   "name": "bunq-banking-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "bunq banking MCP and evidence-based subscription and finance workflows.",
   "author": {
     "name": "Sami Halawa",
-    "url": "https://github.com/samihalawa"
+    "url": "https://github.com/samihalawa",
+    "email": "sami@samihalawa.com"
   },
   "repository": "https://github.com/samihalawa/bunq-banking-mcp",
   "license": "MIT",
@@ -34,6 +35,11 @@
     ],
     "logo": "./assets/icon.svg",
     "composerIcon": "./assets/icon.svg",
-    "brandColor": "#14665B"
-  }
+    "brandColor": "#14665B",
+    "websiteURL": "https://github.com/samihalawa/bunq-banking-mcp",
+    "supportURL": "https://github.com/samihalawa/bunq-banking-mcp/issues",
+    "privacyPolicyURL": "https://github.com/samihalawa/bunq-banking-mcp/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/samihalawa/bunq-banking-mcp/blob/main/TERMS.md"
+  },
+  "requires_local_executor": true
 }

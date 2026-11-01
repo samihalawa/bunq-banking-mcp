@@ -51,8 +51,9 @@ when setting up your integration.
 ## Plugin and finance skills
 
 This repository is also a local desktop plugin. Its portable `plugin.json` and
-`mcp.json` package the same four MCP tools with three reusable workflows:
+`mcp.json` package the same six MCP tools with four reusable workflows:
 
+- **expense-audit** reviews every charge and ranks evidence-backed personal, business and mixed-use savings without inferring tax deductibility.
 - **bunq-banking** discovers schemas, reads complete collections, and verifies
   explicitly requested nonfinancial changes.
 - **subscription-audit** reconciles all in-scope accounts and billing mailboxes,
@@ -93,7 +94,7 @@ separately installed plugin.
 Use your client's local plugin marketplace or supported private-plugin import
 flow to install this package. Register the repository root as the plugin source
 and retain the included runtime files, schema and license notices. Discover the
-four tools and call `connection_status` in the installed host to verify it.
+six tools and call `connection_status` in the installed host to verify it.
 Choose either the plugin connection or the standalone MCP registration for
 active use, so tools are not duplicated. Removing a duplicate client registration
 does not require deleting the vault item or enrolling another bunq device.
@@ -114,6 +115,9 @@ financial audit.
 3. `execute_tool`: execute a modeled operation with validated path, query, and
    body arguments. The authenticated session supplies `userID`.
 4. `connection_status`: verify a live account read without returning secrets.
+
+5. `read_account_history`: exhaust Payment pages for one account and an inclusive-start, exclusive-end date window. Returns all selected records, undated exceptions, cursor coverage and explicit incomplete diagnostics; the page limit defaults to 100. It scans all exposed pages without assuming creation dates are sorted. Dates use the provider's `created` calendar date, without timezone conversion.
+6. `review_financial_records`: review supplied Payment records with exact decimals, conservative reciprocal transfer pairing, separate currency totals, native card statuses and invoice line items. It fetches nothing and establishes no source completeness, business purpose, active contract or tax deduction. Cash totals include internal account legs and are labelled accordingly; they are not consolidated expenses.
 
 Example `execute_tool` account read:
 
@@ -165,7 +169,7 @@ remains outstanding. Writes are never automatically replayed after a failure.
 ```
 
 Tests cover argument validation, user binding, pagination, operation exclusions,
-exact-byte signing, response-signature rejection, and read-only session retry
+exact-decimal currency totals, transfer pairing, conflicting/repeated pages, incomplete coverage, native card statuses, nested fee items, exact-byte signing, response-signature rejection, and read-only session retry
 behavior. Live account reads have been exercised during development; the full
 catalog and enabled write operations have not been individually live-tested.
 The client targets production only. It does not infer subscriptions by itself;

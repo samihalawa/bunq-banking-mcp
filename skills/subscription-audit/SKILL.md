@@ -26,6 +26,8 @@ First inventory **all available authorized sources**, including every institutio
 
 ## Deliver and state coverage
 
+Before assigning a plan or future saving, check [evidence pitfalls](../finance-reconciliation/references/evidence-pitfalls.md). Use expense-audit for nonrecurring charges and personal/business review. Include paid hardware separately from app subscriptions, metered use separately from seats, and completed credits separately from promised refunds. Do not add alternative reductions that apply to the same bill.
+
 Sort the requested register by comparable cost and include upcoming renewals, uncertain candidates and excluded historical items as useful. Create or update a sheet only when requested, using an existing canonical destination where available. Cite stable bank/invoice/email/provider IDs or usable private source links without exposing credentials or full bank identifiers unnecessarily.
 
 State accounts and mailboxes actually covered, requested versus exposed date ranges, exhausted pagination, inspected message/body/attachment counts, and inaccessible provider or historical slices. Retain successful data and resume only missing slices after failures. Never call a sampled or truncated audit complete, carry an old AI total forward, or present missing receipts as proof that no service exists.

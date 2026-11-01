@@ -27,6 +27,8 @@ Discover and enumerate the complete requested account population. Apply the bund
 
 ## Verify and deliver
 
+Use [evidence pitfalls](references/evidence-pitfalls.md) for card retries, fee line items, consolidated arrears, refunds, migrations and utility changes. Apply the bundled expense-audit workflow when the user requests every charge or personal/business savings. Keep a row for every source payment; aggregated merchant totals do not replace a requested transaction ledger.
+
 For each account/currency, compare opening balance plus settled inflows minus settled outflows with closing balance using consistent boundaries. Reconcile named discrepancies against pending movements, fees, FX, missing history and date differences; do not invent balancing entries. Consolidate only after internal-transfer and duplicate checks.
 
 Present the requested spending, income or cash-flow view with reconciled totals, source-backed exceptions and unresolved amounts. Distinguish actual historical cash flow, current balances, invoiced liabilities, recurring run rate and projected renewals. Forecasts must state assumptions and uncertainty. State account/window coverage, unavailable history and whether balances reconcile. Use the user's existing canonical artifact when editing is requested; do not create an incidental tracker or private export. A correct sample or matching subtotal does not establish full coverage.

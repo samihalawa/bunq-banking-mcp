@@ -7,6 +7,7 @@ from mcp.types import ToolAnnotations
 
 from client import BunqClient, BunqError, connection_lock
 from registry import Registry
+from finance import collect_pages, review_payments, card_state, flatten_fee_items
 
 registry = Registry()
 mcp = FastMCP("bunq-banking", instructions=(
@@ -45,6 +46,59 @@ def connection_status() -> dict:
                     "user_type": client.state.get("user_type"), "account_read_verified": "Response" in payload,
                     "credentials": "1Password", "money_movement_enabled": False}
     except (BunqError, ValueError, KeyError) as error:
+        return failure(error)
+
+
+@mcp.tool(annotations=READ)
+def read_account_history(account_id: int, start_date: str, end_date: str,
+                         page_limit: int = 100) -> dict:
+    """Read all exposed Payment pages for one account; ISO dates use [start,end).
+
+    Returns every selected payment, exact cursor coverage and incomplete errors.
+    Provider created dates are used without timezone conversion. A page limit or
+    missing history never counts as complete. Does not read other banks or cards.
+    """
+    try:
+        # Validate dates before opening the bank connection.
+        from datetime import date
+        if date.fromisoformat(end_date) <= date.fromisoformat(start_date):
+            raise ValueError("end_date must follow start_date")
+        if isinstance(account_id, bool) or account_id <= 0:
+            raise ValueError("account_id must be positive")
+        if isinstance(page_limit, bool) or not 1 <= page_limit <= 10000:
+            raise ValueError("page_limit must be in 1..10000")
+        with connection_lock():
+            client = BunqClient()
+            client.connect()
+            name = "List_all_Payment_for_User_MonetaryAccount"
+            prepared = registry.prepare(name, {"path": {"monetary-accountID": account_id},
+                                               "query": {"count": 200}}, client.state["user_id"])
+            def fetch(query):
+                return client.call(**{**prepared, "query": query})
+            result = collect_pages(fetch, prepared["path"], start_date, end_date, page_limit)
+            for payment in result["records"] + result["undated_records"]:
+                payment["monetary_account_id"] = account_id
+            return {"ok": True, "account_id": account_id,
+                    "application_url": "https://web.bunq.com", **result}
+    except (BunqError, ValueError, KeyError) as error:
+        return failure(error)
+
+
+@mcp.tool(annotations=READ)
+def review_financial_records(payments: list[dict], own_accounts: list[dict],
+                             card_actions: list[dict] | None = None,
+                             invoices: list[dict] | None = None) -> dict:
+    """Review supplied records locally with exact decimals and conservative transfers.
+
+    Every payment needs monetary_account_id and id. This tool fetches no history,
+    proves no source completeness, makes no tax or active-subscription inference,
+    and never adds card attempts or invoice totals to settled Payment cash totals.
+    """
+    try:
+        return {"ok": True, **review_payments(payments, own_accounts),
+                "card_evidence": [card_state(c) for c in (card_actions or [])],
+                "invoice_items": flatten_fee_items(invoices or [])}
+    except (ValueError, KeyError, TypeError) as error:
         return failure(error)
 
 

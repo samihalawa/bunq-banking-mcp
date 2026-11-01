@@ -15,6 +15,10 @@ For a broader financial question, first inventory every available authorized sou
 4. Read nested status, refunds, card links and invoice line items when they affect the answer. Resource IDs and display invoice numbers can differ; use the native ID. Keep payment and card representations linked instead of counting both as purchases. For rate limits, use current bunq guidance and the literal retry delay; resume at the failed page without replaying successful reads.
 5. Report native values, currencies, timestamp meaning and source identifiers. Separate catalog support, authentication, a successful operation and full resource coverage. For subscription or spending analysis, apply the other bundled skills.
 
+## Complete payment reads and review
+
+For a dated Payment collection, read_account_history(account_id, start_date, end_date, page_limit) provides terminal-page coverage and retains incomplete diagnostics. Dates are inclusive start/exclusive end using provider created dates; no timezone conversion is implied. Inspect coverage.complete and errors before claiming completeness. The limit caps network work; it is not a completeness boundary. Other resources still use the exact catalog/learn/execute workflow above. Payment rows can be supplied with the account inventory to review_financial_records for exact currency totals and conservative transfer pairing. Supply card/invoice evidence separately; they do not add cash spending. Neither helper establishes coverage of another bank or mailbox.
+
 ## Nonfinancial changes
 
 Only execute a supported write when the user has requested that exact action and target. Learn its schema, inspect current state, and supply `confirm_write=true`. The flag records action authority; it does not create authority. Keep audits read-only. Payments, money movement, trading and other excluded operations remain disabled. Never enable them, route around an exclusion, or automatically replay a write after failure.

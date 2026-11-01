@@ -66,11 +66,20 @@ The portable root manifest remains canonical. These skills are reusable across
 users; they contain no account identifiers, credentials or personal audit data.
 The icon is an independent ledger graphic, not bunq branding.
 
-The plugin needs a local executor: Python 3.11+ accessible as `python3`, the
-packages in `requirements.txt` installed in that interpreter, and authenticated
-`op` available on the plugin process's `PATH`. For example, activate the virtual
-environment above before starting the host so its `python3` is selected.
-Dependencies and vault credentials are not bundled in the plugin archive.
+The plugin needs a local executor with [`uv`](https://docs.astral.sh/uv/) and
+authenticated `op` available on the host process's `PATH`. Its bundled MCP
+configuration runs `uv run --no-project --isolated --no-env-file --python 3.11
+--with-requirements requirements.txt python plugin_launcher.py` with absolute
+package paths. This selects Python 3.11 and resolves the declared dependencies
+in an isolated environment without installing them into the system interpreter
+or relying on an unrelated virtual environment. The standalone virtual-environment
+setup above remains an alternative for a raw MCP registration.
+
+The first launch may download Python and packages through uv's configured
+package sources; subsequent launches can reuse its dependency cache. Dependencies
+and vault credentials are not bundled in the plugin archive. Launch and tool
+discovery do not access the bank or vault; a bank-connected tool opens the
+configured connection when invoked.
 The vault CLI must support item reads and updates while preserving concealed
 fields; retain the same item and `api_context` used by an existing connection.
 

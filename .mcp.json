@@ -1,8 +1,17 @@
 {
   "mcpServers": {
     "bunq-banking": {
-      "command": "python3",
+      "command": "uv",
       "args": [
+        "run",
+        "--no-project",
+        "--isolated",
+        "--no-env-file",
+        "--python",
+        "3.11",
+        "--with-requirements",
+        "${PLUGIN_ROOT}/requirements.txt",
+        "python",
         "${PLUGIN_ROOT}/plugin_launcher.py"
       ],
       "cwd": "${PLUGIN_ROOT}"

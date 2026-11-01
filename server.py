@@ -19,16 +19,17 @@ mcp = FastMCP("bunq-banking", instructions=(
     "Use connection_status to check authentication. Never treat an unverified write as completed."
 ))
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True)
+LOCAL_READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
-@mcp.tool(annotations=READ)
+@mcp.tool(annotations=LOCAL_READ)
 def get_tool_catalog(search: str = "", category: str | None = None,
                      cursor: int = 0, limit: int = 25) -> dict:
     """STEP 1: Browse the official bunq operations. Do not guess operation names. Includes availability and exclusions."""
     return registry.catalog(search, category, cursor, limit)
 
 
-@mcp.tool(annotations=READ)
+@mcp.tool(annotations=LOCAL_READ)
 def learn_tools(names: list[str]) -> dict:
     """STEP 2: Learn exact argument schemas and availability for up to 20 official operation names together."""
     return {"operations": registry.learn(names)}
@@ -84,7 +85,7 @@ def read_account_history(account_id: int, start_date: str, end_date: str,
         return failure(error)
 
 
-@mcp.tool(annotations=READ)
+@mcp.tool(annotations=LOCAL_READ)
 def review_financial_records(payments: list[dict], own_accounts: list[dict],
                              card_actions: list[dict] | None = None,
                              invoices: list[dict] | None = None) -> dict:

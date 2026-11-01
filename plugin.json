@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "bunq-banking-mcp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "bunq banking MCP and evidence-based subscription and finance workflows.",
   "author": {
     "name": "Sami Halawa",
@@ -23,7 +23,7 @@
       "interface": {
         "displayName": "bunq Banking & Finance",
         "shortDescription": "Accounts, bills and cash flow",
-        "longDescription": "Read bunq accounts and reconcile bank transactions, billing emails, subscriptions, fees and refunds with explicit source coverage. Includes controlled nonfinancial operations. Requires a local Python runtime and a 1Password-backed bunq API context.",
+        "longDescription": "Read bunq accounts and reconcile bank transactions, billing emails, subscriptions, fees and refunds with explicit source coverage. Includes controlled nonfinancial operations. Requires uv, a local Python 3.11 environment and a 1Password-backed bunq API context.",
         "developerName": "Sami Halawa",
         "category": "Productivity",
         "capabilities": [
@@ -51,7 +51,7 @@
         ]
       },
       "publication": {
-        "release_notes": "Improved uniquely reciprocal empty-description and explicit FX transfer matching, with matching basis/confidence and regression tests. Added deeper audit guidance for missing history, investment movements, provider retry receipts and acquisition-cost ROI."
+        "release_notes": "Improved uniquely reciprocal empty-description and explicit FX transfer matching with matching basis and confidence. Added deeper audit guidance for missing history, investment movements, provider retry receipts and acquisition-cost ROI. Fixed exact-decimal precision and pagination input guards, corrected local-tool annotations, and isolated the Python 3.11 launcher with uv."
       }
     }
   }

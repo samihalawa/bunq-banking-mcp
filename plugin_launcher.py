@@ -5,6 +5,14 @@ from pathlib import Path
 
 
 def configure():
+    # Prefer the user's installed CLI/shim without changing the host's PATH.
+    local_bin = Path.home() / ".local" / "bin"
+    local_op = local_bin / "op"
+    if local_op.is_file() and os.access(local_op, os.X_OK):
+        entries = os.environ.get("PATH", os.defpath).split(os.pathsep)
+        directory = str(local_bin)
+        os.environ["PATH"] = os.pathsep.join([directory, *(entry for entry in entries if entry != directory)])
+    os.environ.setdefault("OP_BIOMETRIC_UNLOCK_ENABLED", "false")
     settings_path = Path.home() / ".config" / "bunq-banking-mcp" / "settings.json"
     if not settings_path.exists():
         return

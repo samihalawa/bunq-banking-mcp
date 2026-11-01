@@ -11,3 +11,5 @@ The package does not impose a deletion schedule on the vault item, bunq records,
 For package questions, use this repository's support link. Do not include API keys, signing keys, vault context or private bank records in public issues.
 
 The default launcher uses uv to resolve an isolated Python 3.11 environment from the bundled requirements. It may contact configured Python/package sources to obtain dependencies and may reuse uv's dependency cache. That setup does not send bank records or vault contents to those package sources. Host conversations and any requested saved analysis remain subject to the host's policies.
+
+At startup, the launcher prefers an executable `~/.local/bin/op` over other `op` executables on the inherited `PATH`. If none exists there, the inherited `PATH` remains unchanged. It defaults `OP_BIOMETRIC_UNLOCK_ENABLED` to `false` while preserving an explicit inherited value. These changes apply only to the plugin process and its children; they do not change system settings or rewrite vault credentials or context. The selected CLI may contact its configured 1Password service when a bank-connected tool is invoked.

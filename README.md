@@ -67,7 +67,13 @@ users; they contain no account identifiers, credentials or personal audit data.
 The icon is an independent ledger graphic, not bunq branding.
 
 The plugin needs a local executor with [`uv`](https://docs.astral.sh/uv/) and
-authenticated `op` available on the host process's `PATH`. Its bundled MCP
+authenticated `op` available locally. At startup, the launcher prefers an
+executable `~/.local/bin/op` by prepending that directory to the server process's
+`PATH`, removing duplicate entries for that directory. If it is absent or not
+executable, the inherited `PATH` stays unchanged. It defaults
+`OP_BIOMETRIC_UNLOCK_ENABLED` to `false`; an explicitly inherited value takes
+precedence. These settings affect only the plugin process and its children.
+Its bundled MCP
 configuration runs `uv run --no-project --isolated --no-env-file --python 3.11
 --with-requirements requirements.txt python plugin_launcher.py` with absolute
 package paths. This selects Python 3.11 and resolves the declared dependencies

@@ -74,11 +74,14 @@ executable, the inherited `PATH` stays unchanged. It defaults
 `OP_BIOMETRIC_UNLOCK_ENABLED` to `false`; an explicitly inherited value takes
 precedence. These settings affect only the plugin process and its children.
 Its bundled MCP
-configuration runs `uv run --no-project --isolated --no-env-file --python 3.11
---with-requirements requirements.txt python plugin_launcher.py` with absolute
-package paths. This selects Python 3.11 and resolves the declared dependencies
-in an isolated environment without installing them into the system interpreter
-or relying on an unrelated virtual environment. The standalone virtual-environment
+configuration runs `uv run --project PACKAGE_ROOT --locked --isolated
+--no-env-file --python 3.11 python PACKAGE_ROOT/plugin_launcher.py`, with
+`PACKAGE_ROOT` replaced by the absolute installed package path. The bundled
+`pyproject.toml` and `uv.lock` specify the dependency graph and exact package
+versions. `--locked` rejects a missing or stale lockfile instead of changing it.
+This selects Python 3.11 and installs the locked dependencies in an isolated
+environment without installing them into the system interpreter or relying on
+an unrelated virtual environment. The standalone virtual-environment
 setup above remains an alternative for a raw MCP registration.
 
 The first launch may download Python and packages through uv's configured

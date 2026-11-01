@@ -1,4 +1,6 @@
 import os
+import json
+import tomllib
 from pathlib import Path
 import tempfile
 import unittest
@@ -43,3 +45,19 @@ class LauncherTests(unittest.TestCase):
                 self.assertEqual(os.environ["BUNQ_OP_ITEM_ID"], "inherited-item")
                 self.assertEqual(os.environ["BUNQ_OP_VAULT_ID"], "file-vault")
                 self.assertNotIn("PATH", os.environ)
+
+
+class LockedLaunchTests(unittest.TestCase):
+    def test_host_launchers_use_the_committed_project_lock_without_extra_requirements(self):
+        root = Path(__file__).parent
+        project = tomllib.loads((root / "pyproject.toml").read_text())
+        lock = tomllib.loads((root / "uv.lock").read_text())
+        self.assertEqual(project["project"]["version"], "0.3.5")
+        self.assertTrue(lock["package"])
+        for manifest in ("mcp.json", ".mcp.json", ".claude-plugin/plugin.json"):
+            entry = json.loads((root / manifest).read_text())["mcpServers"]["bunq-banking"]
+            self.assertEqual(entry["command"], "uv")
+            self.assertIn("--locked", entry["args"])
+            self.assertIn("--project", entry["args"])
+            self.assertNotIn("--no-project", entry["args"])
+            self.assertNotIn("--with-requirements", entry["args"])

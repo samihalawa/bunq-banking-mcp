@@ -1,0 +1,13 @@
+[project]
+name = "bunq-banking-mcp"
+version = "0.3.5"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "mcp==1.21.1",
+  "cryptography>=46,<51",
+  "requests>=2.32,<3",
+  "jsonschema>=4.23,<5",
+]
+
+[tool.uv]
+package = false
